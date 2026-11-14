@@ -188,7 +188,9 @@ struct DeviceHardwareReport: Codable, Equatable, Sendable {
                 families.append((.metal4,"Metal4"))
                 #endif
             }
+            #if compiler(>=6.4)
             if #available(iOS 27.0, *) { families.append((.apple11,"Apple11")) }
+            #endif
             let workingSet = reportedMemoryBudget(device.recommendedMaxWorkingSetSize)
             return GPU(name: device.name, hasUnifiedMemory: device.hasUnifiedMemory,
                        recommendedWorkingSetBytes: workingSet,
@@ -259,6 +261,7 @@ struct DeviceHardwareReport: Codable, Equatable, Sendable {
         let photos = format.supportedMaxPhotoDimensions.map { Dimensions(width: Int($0.width), height: Int($0.height)) }
             .filter { $0.width > 0 && $0.height > 0 }
         var aperture: Aperture?
+        #if compiler(>=6.4)
         if #available(iOS 27.0, *) {
             let stops = format.recommendedLensApertureStops.map { Double($0) }.filter { $0.isFinite && $0 > 0 }
             aperture = .init(minimum: positive(format.minLensAperture), maximum: positive(format.maxLensAperture),
@@ -268,6 +271,7 @@ struct DeviceHardwareReport: Codable, Equatable, Sendable {
                 supportsShutterPriority: format.supportsExposureModeCustom(lensAperture: AVCaptureDevice.autoLensAperture,
                     duration: AVCaptureDevice.currentExposureDuration, iso: AVCaptureDevice.autoISO))
         }
+        #endif
         return .init(index: index, videoDimensions: dimensions(format.formatDescription), pixelFormat: fourCC(CMFormatDescriptionGetMediaSubType(format.formatDescription)),
             frameRates: frameRates(format), fieldOfViewDegrees: positive(format.videoFieldOfView),
             isBinned: format.isVideoBinned, supportsHDR: format.isVideoHDRSupported,
