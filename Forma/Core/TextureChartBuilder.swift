@@ -6,6 +6,12 @@ import Darwin
 /// Each face belongs to exactly one chart. Splits only move whole faces between
 /// storage rectangles; their UVs continue to sample the same native source pixels.
 enum TextureChartBuilder {
+    static func isUnitUV(_ uv: SIMD2<Float>) -> Bool {
+        guard uv.x.isFinite, uv.y.isFinite else { return false }
+        let insideX: Bool = uv.x >= 0 && uv.x <= 1
+        let insideY: Bool = uv.y >= 0 && uv.y <= 1
+        return insideX && insideY
+    }
     struct Face: Sendable {
         var id: Int
         var sourceID: Int
@@ -82,7 +88,7 @@ enum TextureChartBuilder {
         for (index, face) in faces.enumerated() {
             if index & 1023 == 0 { try checkCancellation() }
             guard faceIDs.insert(face.id).inserted, let size = dimensions[face.sourceID],
-                  [face.a, face.b, face.c].allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.x >= 0 && $0.x <= 1 && $0.y >= 0 && $0.y <= 1 }) else {
+                  Self.isUnitUV(face.a), Self.isUnitUV(face.b), Self.isUnitUV(face.c) else {
                 throw ChartError.invalidFace(face.id)
             }
             rects.append(crop(lower: simd_min(face.a, simd_min(face.b, face.c)),
