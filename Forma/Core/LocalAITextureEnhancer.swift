@@ -681,10 +681,19 @@ enum LocalAITextureEnhancer {
     private static func coverage(_ triangles: [Triangle], width: Int, height: Int) throws -> [UInt8] {
         var mask = [UInt8](repeating: 0, count: width * height)
         func point(_ uv: SIMD2<Float>) -> SIMD2<Float> { SIMD2(uv.x * Float(width), (1 - uv.y) * Float(height)) }
-        func edge(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ p: SIMD2<Float>) -> Float { (b.x-a.x)*(p.y-a.y) - (b.y-a.y)*(p.x-a.x) }
+        func edge(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ p: SIMD2<Float>) -> Float {
+            let lhs: Float = (b.x - a.x) * (p.y - a.y)
+            let rhs: Float = (b.y - a.y) * (p.x - a.x)
+            return lhs - rhs
+        }
+        func inUnitSquare(_ uv: SIMD2<Float>) -> Bool {
+            let insideX: Bool = uv.x >= 0 && uv.x <= 1
+            let insideY: Bool = uv.y >= 0 && uv.y <= 1
+            return insideX && insideY
+        }
         for (index, triangle) in triangles.enumerated() {
             if index & 255 == 0 { try ProcessingControl.checkpoint() }
-            guard [triangle.a, triangle.b, triangle.c].allSatisfy({ $0.x >= 0 && $0.x <= 1 && $0.y >= 0 && $0.y <= 1 }) else { continue }
+            guard inUnitSquare(triangle.a), inUnitSquare(triangle.b), inUnitSquare(triangle.c) else { continue }
             let a = point(triangle.a), b = point(triangle.b), c = point(triangle.c)
             guard abs(edge(a,b,c)) > 0.000_001 else { continue }
             let left = max(0, Int(floor(min(a.x,min(b.x,c.x))))), right = min(width - 1, Int(ceil(max(a.x,max(b.x,c.x)))))
@@ -695,7 +704,9 @@ enum LocalAITextureEnhancer {
                 for x in left...right {
                     let p = SIMD2(Float(x)+0.5, Float(y)+0.5)
                     let e = SIMD3(edge(a,b,p),edge(b,c,p),edge(c,a,p))
-                    if (e.x >= 0 && e.y >= 0 && e.z >= 0) || (e.x <= 0 && e.y <= 0 && e.z <= 0) { mask[y*width+x] = 1 }
+                    let allPositive: Bool = e.x >= 0 && e.y >= 0 && e.z >= 0
+                    let allNegative: Bool = e.x <= 0 && e.y <= 0 && e.z <= 0
+                    if allPositive || allNegative { mask[y * width + x] = 1 }
                 }
             }
         }
