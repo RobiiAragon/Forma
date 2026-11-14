@@ -200,11 +200,15 @@ final class ProcessingActivityCoordinator {
             let generation = session.generation
             Task.detached(priority: .utility) { [weak self] in
                 do {
+                    #if compiler(>=6.4)
                     if #available(iOS 27.0, *) {
                         try await BGTaskScheduler.shared.submitTaskRequest(request)
                     } else {
                         try BGTaskScheduler.shared.submit(request)
                     }
+                    #else
+                    try BGTaskScheduler.shared.submit(request)
+                    #endif
                 } catch {
                     await self?.submissionFailed(id: id, generation: generation, error: error)
                 }
