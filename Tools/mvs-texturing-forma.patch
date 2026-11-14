@@ -1,0 +1,496 @@
+diff --git a/apps/texrecon/arguments.cpp b/apps/texrecon/arguments.cpp
+index 2c9c269..5b2d85b 100644
+--- a/apps/texrecon/arguments.cpp
++++ b/apps/texrecon/arguments.cpp
+@@ -89,6 +89,10 @@ Arguments parse_args(int argc, char **argv) {
+         "Do not write out intermediate results");
+     args.add_option('\0', NUM_THREADS, true,
+         "How many threads to use. Set 1 for determinism.");
++    args.add_option('\0', "forma_native_lut", false,
++        "Require FORMA_RADIAL_LUT_V1 native photo projection for every view.");
++    args.add_option('\0', "forma_labels_only", false,
++        "Save labels/costs and geometry-order receipt, without UVs or atlases; reject changed geometry.");
+     args.parse(argc, argv);
+ 
+     Arguments conf;
+@@ -103,6 +107,8 @@ Arguments parse_args(int argc, char **argv) {
+     conf.write_timings = false;
+     conf.write_intermediate_results = true;
+     conf.write_view_selection_model = false;
++    conf.require_native_lut = false;
++    conf.forma_labels_only = false;
+ 
+     conf.num_threads = -1;
+ 
+@@ -148,6 +154,10 @@ Arguments parse_args(int argc, char **argv) {
+                 conf.write_intermediate_results = false;
+             } else if (i->opt->lopt == NUM_THREADS) {
+                 conf.num_threads = std::stoi(i->arg);
++            } else if (i->opt->lopt == "forma_native_lut") {
++                conf.require_native_lut = true;
++            } else if (i->opt->lopt == "forma_labels_only") {
++                conf.forma_labels_only = true;
+             } else {
+                 throw std::invalid_argument("Invalid long option");
+             }
+@@ -157,6 +167,9 @@ Arguments parse_args(int argc, char **argv) {
+         }
+     }
+ 
++    if (conf.forma_labels_only && !conf.write_intermediate_results) {
++        throw std::invalid_argument("--forma_labels_only requires publication; --no_intermediate_results is incompatible.");
++    }
+     return conf;
+ }
+ 
+@@ -169,6 +182,7 @@ std::string
+ Arguments::to_string(){
+     std::stringstream out;
+     out << "Input scene: \t" << in_scene << std::endl
++        << "Forma labels only: \t" << bool_to_string(forma_labels_only) << std::endl
+         << "Input mesh: \t" << in_mesh << std::endl
+         << "Output prefix: \t" << out_prefix << std::endl
+         << "Datacost file: \t" << data_cost_file << std::endl
+diff --git a/apps/texrecon/arguments.h b/apps/texrecon/arguments.h
+index 00e2f02..82eff98 100644
+--- a/apps/texrecon/arguments.h
++++ b/apps/texrecon/arguments.h
+@@ -27,6 +27,8 @@ struct Arguments {
+     bool write_timings;
+     bool write_intermediate_results;
+     bool write_view_selection_model;
++    bool require_native_lut;
++    bool forma_labels_only;
+ 
+     int num_threads;
+ 
+diff --git a/apps/texrecon/texrecon.cpp b/apps/texrecon/texrecon.cpp
+index 5aee012..f625ec4 100644
+--- a/apps/texrecon/texrecon.cpp
++++ b/apps/texrecon/texrecon.cpp
+@@ -11,6 +11,7 @@
+ #include <fstream>
+ #include <vector>
+ #include <tbb/task_arena.h>
++#include <tbb/global_control.h>
+ #include <omp.h>
+ 
+ #include <util/timer.h>
+@@ -25,6 +26,7 @@
+ #include "tex/progress_counter.h"
+ 
+ #include "arguments.h"
++#include "forma_geometry_receipt.h"
+ 
+ int main(int argc, char **argv) {
+     util::system::print_build_timestamp(argv[0]);
+@@ -60,7 +62,9 @@ int main(int argc, char **argv) {
+     }
+ 
+     // Set the number of threads to use.
+-    tbb::task_arena arena(conf.num_threads > 0 ? conf.num_threads : tbb::this_task_arena::max_concurrency());
++    // Isolated Forma research build: enforce the requested oneTBB limit globally.
++    tbb::global_control thread_limit(tbb::global_control::max_allowed_parallelism,
++        conf.num_threads > 0 ? conf.num_threads : tbb::this_task_arena::max_concurrency());
+ 
+     if (conf.num_threads > 0) {
+         omp_set_dynamic(0);
+@@ -75,12 +79,37 @@ int main(int argc, char **argv) {
+         std::cerr << "\tCould not load mesh: " << e.what() << std::endl;
+         std::exit(EXIT_FAILURE);
+     }
++    forma::GeometryReceipt geometry;
++    try {
++        if (conf.forma_labels_only) geometry.before(conf.in_mesh, mesh);
++        mve::MeshInfo mesh_info_before(mesh);
++        tex::prepare_mesh(&mesh_info_before, mesh);
++        if (conf.forma_labels_only) {
++            geometry.after(mesh);
++            if (!geometry.unchanged()) {
++                geometry.write(conf.out_prefix + "_forma_geometry.json", 0, "", "rejected_geometry_changed");
++                throw std::runtime_error("FORMA_GEOMETRY_ORDER_V1: prepare_mesh changed positions, face indices or order; refusing mismatched labels.");
++            }
++        }
++    } catch (std::exception const& e) {
++        std::cerr << e.what() << std::endl;
++        util::fs::rmdir(tmp_dir.c_str());
++        return EXIT_FAILURE;
++    }
+     mve::MeshInfo mesh_info(mesh);
+-    tex::prepare_mesh(&mesh_info, mesh);
+ 
+     std::cout << "Generating texture views: " << std::endl;
+     tex::TextureViews texture_views;
+     tex::generate_texture_views(conf.in_scene, &texture_views, tmp_dir);
++    if (conf.require_native_lut) {
++        for (std::size_t i = 0; i < texture_views.size(); ++i) {
++            if (!texture_views[i].has_native_radial_projection()) {
++                std::cerr << "FORMA_RADIAL_LUT_V1 missing for texture view " << i << std::endl;
++                return EXIT_FAILURE;
++            }
++        }
++        std::cout << "FORMA_RADIAL_LUT_V1 enabled for " << texture_views.size() << " original photos." << std::endl;
++    }
+ 
+     write_string_to_file(conf.out_prefix + ".conf", conf.to_string());
+     timer.measure("Loading");
+@@ -115,6 +144,9 @@ int main(int argc, char **argv) {
+             }
+             std::cout << "done." << std::endl;
+         }
++        if (conf.forma_labels_only && !conf.data_cost_file.empty()) {
++            tex::DataCosts::save_to_file(data_costs, conf.out_prefix + "_data_costs.spt");
++        }
+         timer.measure("Calculating data costs");
+ 
+         try {
+@@ -138,6 +170,13 @@ int main(int argc, char **argv) {
+         std::cout << "Loading labeling from file... " << std::flush;
+ 
+         /* Load labeling from file. */
++        if (conf.forma_labels_only) {
++            std::ifstream labels_input(conf.labeling_file, std::ios::binary | std::ios::ate);
++            if (!labels_input || labels_input.tellg() != static_cast<std::streamoff>(num_faces * 8)) {
++                std::cerr << "FORMA_LABELS_ONLY_V1: labeling byte count mismatch." << std::endl;
++                return EXIT_FAILURE;
++            }
++        }
+         std::vector<std::size_t> labeling = vector_from_file<std::size_t>(conf.labeling_file);
+         if (labeling.size() != graph.num_nodes()) {
+             std::cerr << "Wrong labeling file for this mesh/scene combination... aborting!" << std::endl;
+@@ -155,6 +194,25 @@ int main(int argc, char **argv) {
+         }
+ 
+         std::cout << "done." << std::endl;
++        if (conf.forma_labels_only) vector_to_file(conf.out_prefix + "_labeling.vec", labeling);
++    }
++
++    if (conf.forma_labels_only) {
++        try {
++            geometry.write(conf.out_prefix + "_forma_geometry.json", texture_views.size(),
++                conf.out_prefix + "_labeling.vec", "complete");
++            for (util::fs::File const & file : util::fs::Directory(tmp_dir)) {
++                util::fs::unlink(util::fs::join_path(file.path, file.name).c_str());
++            }
++            util::fs::rmdir(tmp_dir.c_str());
++            timer.measure("Total");
++            if (conf.write_timings) timer.write_to_file(conf.out_prefix + "_timings.csv");
++            std::cout << "FORMA_LABELS_ONLY_V1 complete: labels and unchanged geometry receipt; no UV/atlas generation." << std::endl;
++            return EXIT_SUCCESS;
++        } catch (std::exception const& e) {
++            std::cerr << "FORMA_LABELS_ONLY_V1: " << e.what() << std::endl;
++            return EXIT_FAILURE;
++        }
+     }
+ 
+     tex::TextureAtlases texture_atlases;
+diff --git a/elibs/CMakeLists.txt b/elibs/CMakeLists.txt
+index 0e4c833..401fb08 100644
+--- a/elibs/CMakeLists.txt
++++ b/elibs/CMakeLists.txt
+@@ -1,42 +1,5 @@
+-externalproject_add(ext_mapmap
+-    PREFIX          ext_mapmap
+-    GIT_REPOSITORY  https://github.com/dthuerck/mapmap_cpu.git
+-    GIT_TAG         fa526e0
+-    UPDATE_COMMAND  ""
+-    SOURCE_DIR      ${CMAKE_SOURCE_DIR}/elibs/mapmap
+-    CONFIGURE_COMMAND ""
+-    BUILD_COMMAND   ""
+-    INSTALL_COMMAND ""
+-)
+-
+-externalproject_add(ext_rayint
+-    PREFIX          ext_rayint
+-    GIT_REPOSITORY  https://github.com/nmoehrle/rayint.git
+-    GIT_TAG         cuda
+-    UPDATE_COMMAND  ""
+-    SOURCE_DIR      ${CMAKE_SOURCE_DIR}/elibs/rayint
+-    CONFIGURE_COMMAND ""
+-    BUILD_COMMAND   ""
+-    INSTALL_COMMAND ""
+-)
+-
+-externalproject_add(ext_eigen
+-    PREFIX          ext_eigen
+-    URL             https://gitlab.com/libeigen/eigen/-/archive/3.3.2/eigen-3.3.2.tar.gz
+-    URL_MD5         02edfeec591ae09848223d622700a10b
+-    SOURCE_DIR      ${CMAKE_SOURCE_DIR}/elibs/eigen
+-    CONFIGURE_COMMAND ""
+-    BUILD_COMMAND   ""
+-    INSTALL_COMMAND ""
+-)
+-
+-externalproject_add(ext_mve
+-    PREFIX          mve
+-    GIT_REPOSITORY  https://github.com/nmoehrle/mve.git
+-    UPDATE_COMMAND  ""
+-    SOURCE_DIR      ${CMAKE_SOURCE_DIR}/elibs/mve
+-    CONFIGURE_COMMAND ""
+-    BUILD_COMMAND   make -C libs/mve && make -C libs/util #not platform independent
+-    BUILD_IN_SOURCE 1
+-    INSTALL_COMMAND ""
+-)
++# Isolated arm64 research build: dependencies already fetched from their official repositories.
++add_custom_target(ext_mapmap)
++add_custom_target(ext_rayint)
++add_custom_target(ext_eigen)
++add_custom_target(ext_mve COMMAND ${CMAKE_COMMAND} -E env "CXXINTRINSICS=" "CXX=clang++" "CPPFLAGS=-DHOST_BYTEORDER_LE -I/opt/homebrew/include -I/opt/homebrew/opt/jpeg-turbo/include" make -j2 -C ${CMAKE_SOURCE_DIR}/elibs/mve/libs/mve COMMAND ${CMAKE_COMMAND} -E env "CXXINTRINSICS=" "CXX=clang++" "CPPFLAGS=-DHOST_BYTEORDER_LE -I/opt/homebrew/include -I/opt/homebrew/opt/jpeg-turbo/include" make -j2 -C ${CMAKE_SOURCE_DIR}/elibs/mve/libs/util)
+diff --git a/libs/tex/generate_texture_patches.cpp b/libs/tex/generate_texture_patches.cpp
+index 7aa2a89..20b7108 100644
+--- a/libs/tex/generate_texture_patches.cpp
++++ b/libs/tex/generate_texture_patches.cpp
+@@ -464,6 +464,7 @@ generate_texture_patches(UniGraph const & graph, mve::TriangleMesh::ConstPtr mes
+     vertex_projection_infos->resize(vertices.size());
+ 
+     std::size_t num_patches = 0;
++    std::size_t completed_views = 0;
+ 
+     std::cout << "\tRunning... " << std::flush;
+     #pragma omp parallel for schedule(dynamic)
+@@ -507,31 +508,34 @@ generate_texture_patches(UniGraph const & graph, mve::TriangleMesh::ConstPtr mes
+             }
+         }
+ 
+-        it = candidates.begin();
+-        for (; it != candidates.end(); ++it) {
+-            std::size_t texture_patch_id;
+-
+-            #pragma omp critical
+-            {
++        // Publish all projections for one photo while holding one lock. The
++        // original per-vertex critical section causes millions of contended
++        // acquisitions on dense meshes; projection values are unchanged.
++        #pragma omp critical
++        {
++            it = candidates.begin();
++            for (; it != candidates.end(); ++it) {
+                 texture_patches->push_back(it->texture_patch);
+-                texture_patch_id = num_patches++;
+-            }
++                std::size_t texture_patch_id = num_patches++;
+ 
+-            std::vector<std::size_t> const & faces = it->texture_patch->get_faces();
+-            std::vector<math::Vec2f> const & texcoords = it->texture_patch->get_texcoords();
+-            for (std::size_t i = 0; i < faces.size(); ++i) {
+-                std::size_t const face_id = faces[i];
+-                std::size_t const face_pos = face_id * 3;
+-                for (std::size_t j = 0; j < 3; ++j) {
+-                    std::size_t const vertex_id = mesh_faces[face_pos  + j];
+-                    math::Vec2f const projection = texcoords[i * 3 + j];
++                std::vector<std::size_t> const & faces = it->texture_patch->get_faces();
++                std::vector<math::Vec2f> const & texcoords = it->texture_patch->get_texcoords();
++                for (std::size_t i = 0; i < faces.size(); ++i) {
++                    std::size_t const face_id = faces[i];
++                    std::size_t const face_pos = face_id * 3;
++                    for (std::size_t j = 0; j < 3; ++j) {
++                        std::size_t const vertex_id = mesh_faces[face_pos  + j];
++                        math::Vec2f const projection = texcoords[i * 3 + j];
+ 
+-                    VertexProjectionInfo info = {texture_patch_id, projection, {face_id}};
++                        VertexProjectionInfo info = {texture_patch_id, projection, {face_id}};
+ 
+-                    #pragma omp critical
+-                    vertex_projection_infos->at(vertex_id).push_back(info);
++                        vertex_projection_infos->at(vertex_id).push_back(info);
++                    }
+                 }
+             }
++            ++completed_views;
++            std::cout << "\r\tPublished texture views " << completed_views << "/"
++                      << texture_views->size() << std::flush;
+         }
+     }
+ 
+diff --git a/libs/tex/texture_view.cpp b/libs/tex/texture_view.cpp
+index 067cb49..9d5ed7b 100644
+--- a/libs/tex/texture_view.cpp
++++ b/libs/tex/texture_view.cpp
+@@ -32,6 +32,7 @@ TextureView::TextureView(std::size_t id, mve::CameraInfo const & camera,
+ 
+     width = header.width;
+     height = header.height;
++    forma_radial_projection.load_optional(image_file, width, height);
+ 
+     camera.fill_calibration(*projection, width, height);
+     camera.fill_camera_pos(*pos);
+diff --git a/libs/tex/texture_view.h b/libs/tex/texture_view.h
+index b064f8b..619354a 100644
+--- a/libs/tex/texture_view.h
++++ b/libs/tex/texture_view.h
+@@ -19,6 +19,7 @@
+ 
+ #include "tri.h"
+ #include "settings.h"
++#include "forma_radial_projection.h"
+ 
+ TEX_NAMESPACE_BEGIN
+ 
+@@ -50,11 +51,13 @@ class TextureView {
+         mve::ByteImage::Ptr image;
+         mve::ByteImage::Ptr gradient_magnitude;
+         std::vector<bool> validity_mask;
++        FormaRadialProjection forma_radial_projection;
+ 
+ 
+     public:
+         /** Returns the id of the TexureView which is consistent for every run. */
+         std::size_t get_id(void) const;
++        bool has_native_radial_projection(void) const { return forma_radial_projection.enabled(); }
+ 
+         /** Returns the 2D pixel coordinates of the given vertex projected into the view. */
+         math::Vec2f get_pixel_coords(math::Vec3f const & vertex) const;
+@@ -162,7 +165,9 @@ inline math::Vec2f
+ TextureView::get_pixel_coords(math::Vec3f const & vertex) const {
+     math::Vec3f pixel = projection * world_to_cam.mult(vertex, 1.0f);
+     pixel /= pixel[2];
+-    return math::Vec2f(pixel[0] - 0.5f, pixel[1] - 0.5f);
++    float x = pixel[0] - 0.5f, y = pixel[1] - 0.5f;
++    forma_radial_projection.project(x, y);
++    return math::Vec2f(x, y);
+ }
+ 
+ inline math::Vec3f
+diff --git a/apps/texrecon/forma_geometry_receipt.h b/apps/texrecon/forma_geometry_receipt.h
+new file mode 100644
+index 0000000..c6ac86d
+--- /dev/null
++++ b/apps/texrecon/forma_geometry_receipt.h
+@@ -0,0 +1,55 @@
++// Forma's geometry-order receipt. SHA inputs are canonical little-endian Float32 XYZ
++// and UInt32 face indices, with no SIMD padding, normal data or PLY list-size bytes.
++#ifndef FORMA_GEOMETRY_RECEIPT_H
++#define FORMA_GEOMETRY_RECEIPT_H
++#include <CommonCrypto/CommonDigest.h>
++#include <cstdint>
++#include <cstring>
++#include <fstream>
++#include <iomanip>
++#include <sstream>
++#include <stdexcept>
++#include <mve/mesh.h>
++namespace forma {
++struct Digest {
++    CC_SHA256_CTX state;
++    Digest() { CC_SHA256_Init(&state); }
++    void bytes(void const* p, std::size_t n) { while (n) { CC_LONG k=static_cast<CC_LONG>(std::min<std::size_t>(n, 1<<20)); CC_SHA256_Update(&state,p,k);p=static_cast<char const*>(p)+k;n-=k; } }
++    void u32(std::uint32_t v) { unsigned char p[4]={static_cast<unsigned char>(v),static_cast<unsigned char>(v>>8),static_cast<unsigned char>(v>>16),static_cast<unsigned char>(v>>24)};bytes(p,4); }
++    std::string finish() { unsigned char digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256_Final(digest,&state);std::ostringstream s;for(auto c:digest)s<<std::hex<<std::setfill('0')<<std::setw(2)<<int(c);return s.str(); }
++};
++inline std::string file_sha(std::string const& path) {
++    std::ifstream f(path,std::ios::binary);if(!f)throw std::runtime_error("Could not hash input/output file: "+path);
++    Digest d;char b[1<<16];while(f){f.read(b,sizeof(b));d.bytes(b,static_cast<std::size_t>(f.gcount()));}if(!f.eof())throw std::runtime_error("File hash read failed: "+path);return d.finish();
++}
++inline std::string vertex_sha(mve::TriangleMesh::Ptr const& mesh) {
++    static_assert(sizeof(float)==4,"Float32 geometry required");Digest d;
++    for(auto const& v:mesh->get_vertices())for(int i=0;i<3;++i){std::uint32_t bits;float f=v[i];std::memcpy(&bits,&f,4);d.u32(bits);}return d.finish();
++}
++inline std::string face_sha(mve::TriangleMesh::Ptr const& mesh) {
++    Digest d;for(auto v:mesh->get_faces()){if(static_cast<std::uint64_t>(v)>UINT32_MAX)throw std::runtime_error("Face index is not UInt32 representable");d.u32(static_cast<std::uint32_t>(v));}return d.finish();
++}
++struct GeometryReceipt {
++    std::string inputSHA,beforeVertex,afterVertex,beforeFace,afterFace;
++    std::size_t vertexCount=0,faceCount=0,outputVertexCount=0,outputFaceCount=0;
++    void before(std::string const& file,mve::TriangleMesh::Ptr const& mesh) { inputSHA=file_sha(file);vertexCount=mesh->get_vertices().size();faceCount=mesh->get_faces().size()/3;beforeVertex=vertex_sha(mesh);beforeFace=face_sha(mesh); }
++    void after(mve::TriangleMesh::Ptr const& mesh) { outputVertexCount=mesh->get_vertices().size();outputFaceCount=mesh->get_faces().size()/3;afterVertex=vertex_sha(mesh);afterFace=face_sha(mesh); }
++    bool unchanged() const { return vertexCount==outputVertexCount&&faceCount==outputFaceCount&&beforeVertex==afterVertex&&beforeFace==afterFace; }
++    void write(std::string const& path,std::size_t views,std::string const& labels,std::string const& status) const {
++        static_assert(sizeof(std::size_t)==8,"Forma labels ABI requires size_t64");
++        std::string labelsSHA; if(!labels.empty()) { std::ifstream f(labels,std::ios::binary|std::ios::ate);if(!f || f.tellg()!=static_cast<std::streamoff>(faceCount*8))throw std::runtime_error("Label byte count does not match geometry");labelsSHA=file_sha(labels); }
++        std::ofstream f(path+".partial",std::ios::binary|std::ios::trunc);if(!f)throw std::runtime_error("Cannot create geometry receipt");
++        f<<"{\n\"schemaVersion\":1,\"workerABI\":\"FORMA_LABELS_ONLY_V1\",\"status\":\""<<status<<"\",\n"
++         <<"\"inputMeshSHA256\":\""<<inputSHA<<"\",\n"
++         <<"\"calledProductionPrepareMesh\":true,\"vertexCount\":"<<vertexCount<<",\"faceCount\":"<<faceCount<<",\n"
++         <<"\"inputFaceCount\":"<<faceCount<<",\"outputFaceCount\":"<<outputFaceCount<<",\"outputVertexCount\":"<<outputVertexCount<<",\"removedFaces\":"<<(static_cast<std::int64_t>(faceCount)-static_cast<std::int64_t>(outputFaceCount))<<",\n"
++         <<"\"faceIndexOrderExact\":"<<(beforeFace==afterFace&&faceCount==outputFaceCount?"true":"false")<<",\"worldVerticesExact\":"<<(beforeVertex==afterVertex&&vertexCount==outputVertexCount?"true":"false")<<",\n"
++         <<"\"beforeVertexSHA256\":\""<<beforeVertex<<"\",\"afterVertexSHA256\":\""<<afterVertex<<"\",\n"
++         <<"\"beforeFaceIndexSHA256\":\""<<beforeFace<<"\",\"afterFaceIndexSHA256\":\""<<afterFace<<"\",\n"
++         <<"\"labelCount\":"<<(labels.empty()?0:faceCount)<<",\"labelElementBytes\":8,\"labelByteOrder\":\"littleEndian\",\"labelsSHA256\":\""<<labelsSHA<<"\",\n"
++         <<"\"labelToView\":\"zero=unassigned;N=viewIndex(N-1)\",\"textureViewCount\":"<<views<<",\"UVOrAtlasGenerated\":false\n}\n";
++        f.close();if(!f)throw std::runtime_error("Geometry receipt write failed");if(std::rename((path+".partial").c_str(),path.c_str())!=0)throw std::runtime_error("Geometry receipt publication failed");
++    }
++};
++}
++#endif
+diff --git a/libs/tex/forma_radial_projection.h b/libs/tex/forma_radial_projection.h
+new file mode 100644
+index 0000000..9b5d805
+--- /dev/null
++++ b/libs/tex/forma_radial_projection.h
+@@ -0,0 +1,76 @@
++#ifndef FORMA_RADIAL_PROJECTION_H
++#define FORMA_RADIAL_PROJECTION_H
++
++#include <algorithm>
++#include <cmath>
++#include <fstream>
++#include <stdexcept>
++#include <string>
++#include <vector>
++
++// Optional native radial projection for mvs-texturing. Coordinates are pixel
++// centers with (0,0) at the top-left pixel, after MVE's -0.5 convention correction.
++// This maps a pinhole projection to a measured photo pixel; it never rewrites,
++// resizes, crops, or undistorts the photograph.
++class FormaRadialProjection {
++public:
++    void load_optional(std::string const& image_path, int width, int height) {
++        std::size_t dot = image_path.find_last_of('.');
++        std::string path = image_path.substr(0, dot) + ".forma-lut";
++        std::ifstream input(path.c_str());
++        if (!input) return;
++        std::string magic;
++        int recorded_width = 0, recorded_height = 0;
++        std::size_t count = 0;
++        input >> magic >> recorded_width >> recorded_height >> cx >> cy >> rmax >> count;
++        if (!input || magic != "FORMA_RADIAL_LUT_V1" || recorded_width != width ||
++            recorded_height != height || count < 2 || !std::isfinite(cx) ||
++            !std::isfinite(cy) || !std::isfinite(rmax) || rmax <= 0 ||
++            cx < 0 || cy < 0 || cx > width - 1 || cy > height - 1)
++            throw std::runtime_error("Invalid Forma radial LUT header: " + path);
++        double expected = std::hypot(std::max(cx, width - cx), std::max(cy, height - cy));
++        if (std::abs(rmax - expected) > 1e-7 * expected)
++            throw std::runtime_error("Forma radial LUT radius disagrees with photo dimensions: " + path);
++        // Read incrementally; a corrupt declared count cannot preallocate memory.
++        for (std::size_t i = 0; i < count; ++i) {
++            double value = 0;
++            if (!(input >> value) || !std::isfinite(value) || value <= -1)
++                throw std::runtime_error("Invalid Forma radial LUT sample: " + path);
++            values.push_back(value);
++        }
++        std::string extra;
++        if (input >> extra) throw std::runtime_error("Unexpected Forma radial LUT data: " + path);
++        // A physical radial camera must preserve radial ordering throughout each
++        // piecewise-linear magnification segment, including between LUT samples.
++        double step = rmax / (values.size() - 1);
++        for (std::size_t i = 0; i + 1 < values.size(); ++i) {
++            double r = step * i, slope = (values[i + 1] - values[i]) / step;
++            double start_derivative = 1 + values[i] + r * slope;
++            double end_derivative = 1 + values[i + 1] + (r + step) * slope;
++            if (start_derivative <= 0 || end_derivative <= 0)
++                throw std::runtime_error("Non-monotonic Forma radial LUT: " + path);
++        }
++    }
++
++    void project(float& x, float& y) const {
++        if (values.empty() || !std::isfinite(x) || !std::isfinite(y)) return;
++        double dx = double(x) - cx, dy = double(y) - cy;
++        double coordinate = std::hypot(dx, dy) * (values.size() - 1) / rmax;
++        double magnification = values.back();
++        if (coordinate < values.size() - 1) {
++            std::size_t index = static_cast<std::size_t>(coordinate);
++            double fraction = coordinate - index;
++            magnification = values[index] * (1 - fraction) + values[index + 1] * fraction;
++        }
++        x = static_cast<float>(cx + dx * (1 + magnification));
++        y = static_cast<float>(cy + dy * (1 + magnification));
++    }
++
++    bool enabled() const { return !values.empty(); }
++
++private:
++    double cx = 0, cy = 0, rmax = 0;
++    std::vector<double> values;
++};
++
++#endif

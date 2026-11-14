@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/frs0n/msplat-ios",
+  "commit": "e8611098583059b82e0b7d35259fb4e9c42df248",
+  "license": "Apache-2.0",
+  "excluded": [
+    "datasets",
+    "models",
+    "examples",
+    "git-lfs objects"
+  ],
+  "localChanges": [
+    "Exception-safe Forma C bridge",
+    "One-trainer lease for the shared Metal context and cache",
+    "Input and checkpoint shape/length validation",
+    "Atomic verified checkpoint writes preserve the previous valid checkpoint",
+    "Exact CPU tile sorting replaces truncating 2048 tile bins",
+    "Exact maximum-occupancy chunk count replaces heuristic truncation",
+    "Checked byte arithmetic and runtime available-memory preflight for exact bins and buffers",
+    "Initialized Metal context and surfaced command-buffer failures",
+    "Stable quaternion normalization before SPLAT byte quantization",
+    "Config keeps source coordinates, full image resolution and densification through requested iterations"
+  ]
+}

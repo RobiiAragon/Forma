@@ -1,0 +1,12 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcresult
+Tools/forma-reconstruct
+Vendor/Msplat/Build/*
+!Vendor/Msplat/Build/MsplatCore.xcframework/
+!Vendor/Msplat/Build/msplat-ios.metallib
+!Vendor/Msplat/Build/msplat-simulator.metallib
+dist/

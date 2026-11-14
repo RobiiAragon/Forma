@@ -1,0 +1,33 @@
+FORMA — revisión acotada de arquitectura e interfaz
+18 de octubre de 2026 · Candidato 0.9.4 (21)
+
+Cambios comprobables
+- Controles SwiftUI y estilo pasan de Core a Forma/Presentation/Components. El generador Xcode conserva su inclusión iPhone/Mac. No se modifican algoritmos, formatos, modelos, icono, nombre o colores aprobados.
+- ScanDetailView deja de poseer la tarea/progreso/ajustes/resultados del reprocesado: los gestiona ScanRefinementViewModel. SavedScanRefinement mantiene el procesamiento y la limpieza del workspace; ScanStore mantiene la publicación durable. Acciones repetidas no crean tareas simultáneas. Se conserva la cancelación al abandonar el detalle y no se cancela un guardado ajeno.
+- La tolerancia tiene nombre/unidad explícitos para VoiceOver, validación visible, campo escalable y disposición vertical con tamaños de accesibilidad. En iPhone hay botón Listo para cerrar el teclado decimal y controles con altura mínima de 44 pt.
+- PrimaryButton y Eyebrow usan ScaledMetric sin cambiar sus tamaños base ni paleta. Las flechas decorativas no añaden anuncios de VoiceOver. Volver/eliminar del detalle pasan de 40 a 44 pt.
+- El panel de geometría de Mac tiene Cerrar/Escape, contenido desplazable y nombre/porcentaje de progreso accesibles. Cerrar conserva el proceso; se puede reabrir el panel activo desde su captura, sin iniciar otro proceso. La app debe permanecer abierta.
+
+Validación realizada
+- Compilaciones Release iPhone y Mac aprobadas.
+- 13 pruebas focalizadas: 0 fallidas, 0 omitidas. Incluyen estado del ViewModel, evitar doble inicio, copia derivada con fuente intacta, cancelación, entrada inválida y rechazo de limpieza de un directorio ajeno, más regresiones de reprocesado/manifiestos/materiales.
+- Prueba de interfaz en simulador iPhone 18 Pro con Dynamic Type máximo: botón Capturar accesible/tocable, dimensiones >=44 pt; captura de pantalla inspeccionada. El texto del botón crece y se distribuye en varias líneas sin cortar el título.
+- Resultado: build/FormaArchitectureHIGReview.xcresult. Captura: build/ArchitectureHIGReview/attachments/136A54F7-E00E-475E-A746-02BF7496A1FB.png.
+- Colores opacos calculados con luminancia relativa sRGB: negro/acento 6.82:1, crema/fondo 16.79:1, texto secundario/panel 6.00:1. Las constantes de color son idénticas al estado previo. Este cálculo no cubre transparencias, imágenes, todos los estados o toda la interfaz.
+
+Guías oficiales consultadas (revisión enfocada)
+https://developer.apple.com/design/human-interface-guidelines/accessibility
+https://developer.apple.com/design/human-interface-guidelines/dark-mode
+https://developer.apple.com/design/human-interface-guidelines/progress-indicators
+https://developer.apple.com/design/human-interface-guidelines/buttons
+Se aplicaron texto ampliable, etiquetas/unidades, controles alcanzables, progreso visible y salida explícita de un panel. iPhone conserva el diseño oscuro aprobado para captura/visualización 3D; HIG contempla una apariencia oscura permanente en casos de medios inmersivos. Mac mantiene colores y controles nativos que se adaptan al sistema. No se añadió un selector de tema ni se rediseñó la identidad.
+
+Alcance y pendientes
+- No es una auditoría completa de todas las pantallas ni una certificación HIG, WCAG o aprobación de App Store. Persisten textos con tamaños fijos en otras vistas; no se afirma soporte completo de Dynamic Type en toda Forma.
+- Pendientes: recorrido completo con VoiceOver en dispositivo, teclado decimal físico, panel Mac por teclado y apariencias claro/oscuro con Increase Contrast/Reduce Transparency; el simulador y los ratios base no sustituyen esas pruebas.
+- Los controles/macOS compilan, pero no se abrió la app instalada porque conserva una cola de trabajos. No se inició ninguna captura, entrenamiento o reconstrucción.
+- No se reinstaló ni actualizó el iPhone o Mac. Las apps instaladas permanecen en build 20; el build 21 queda listo para revisión. Antes de instalar en iPhone se debe confirmar disponibilidad y ausencia de entrenamiento activo.
+- Offline: captura, reconstrucción, bibliotecas/exportación y modelos ya locales mantienen sus motores nativos. iPhone conserva su Core ML empaquetado; Mac conserva la instalación/cache de Real-ESRGAN ya existente y su descarga explícita previa si falta. No se añadió modelo descargable, SDK, nube, cuenta, analítica o backend, ni se subieron datos.
+- Pago aclarado: pago único al descargar de App Store, con acceso completo; sin StoreKit, IAP, suscripciones, publicidad o comprobaciones locales de desbloqueo. Precio y publicación quedan al usuario; no se modificaron cuentas ni certificados.
+
+Mapa breve y guía de extensión: docs/MODULE_MAP.txt.

@@ -1,0 +1,69 @@
+FORMA 0.9.4 (20) — Revisión acotada de geometría y controles
+18 de octubre de 2026
+
+Resultado comprobado
+- Se implementaron controles efectivos en los modos existentes y se corrigieron fallos del flujo de calidad. Todo continúa local. Sin pagos, nube ni cuotas nuevas.
+- NO se ha demostrado que esta versión supere a Polycam ni que quite el gotelé de la sala antigua. No se cambió el icono, nombre ni paleta.
+
+Hallazgos priorizados y cambios
+1. Espacios no activaba planeDetection: se añadió asistencia horizontal/vertical configurable. Apple documenta que la reconstrucción suaviza las zonas donde detecta planos (https://developer.apple.com/documentation/arkit/arworldtrackingconfiguration/scenereconstruction). ARKit no expone un selector de resolución física o densidad de la malla LiDAR.
+2. La apariencia sólida del iPhone conservaba normal/displacement/AO del material importado; esos mapas podían simular relieve al inspeccionar geometría. Ahora se desactivan en la copia del material de geometría y se recuperan al volver a textura. En Mac se corrigió también el OBJ sin malla JSON y se limpiaron mapas de relieve del USDZ en geometría. Las exportaciones/materiales fuente no se alteran.
+3. El servicio Gaussian tenía modos de calidad que calculaban valores ajustados pero usaban los originales. Se eliminó ese código sin efecto; los atajos ahora modifican los controles reales, editables, de pasos/resolución.
+4. Las opciones fotogramétricas forman parte de la identidad del checkpoint para evitar mezclar configuraciones. Los informes incluyen configuración solicitada y triángulos efectivos. Un presupuesto mayor o 16K no demuestra precisión.
+5. Se reparó una ruta de compilación rota por fuentes nativas movidas: se restauraron 30 archivos desde la copia existente, comprobados individualmente contra las huellas registradas. Binarios y manifiestos originales no se modificaron. Ambas verificaciones de artefactos pasan.
+
+Controles por modo
+ESPACIOS / IPHONE
+- Resolución nativa de fotos existente, más vistas con la mitad del desplazamiento/rotación (3 cm / ~2 grados frente a 6 cm / ~4 grados).
+- Objetivo de selección/escritura/vista de 5 fps conservado. ARKit sigue usando un formato de sensor soportado; 5 fps no se anuncia como frecuencia física del LiDAR.
+- Asistencia nativa de planos opcional. Puede eliminar relieves reales donde ARKit identifique un plano; desactivada por defecto.
+- Corrección geométrica opcional de regiones planas con tolerancia editable en mm (3 mm iniciales), también disponible al reprocesar una captura guardada en iPhone o Mac. Usa una copia y vuelve a texturizar sobre la geometría corregida. No modifica imágenes fuente.
+- Preferencias persistidas en dataset.json: el procesamiento híbrido usa las mismas opciones.
+
+OBJETOS / IPHONE
+- Sensibilidad normal/alta, máscara de objeto y orden secuencial/sin ordenar aplicados al motor nativo.
+- El SDK de iPhone solo permite Request.Detail.reduced: se explica; no se inventa Raw/Full móvil ni un control de polígonos que Apple no ofrezca.
+
+FOTOGRAMETRÍA / MAC
+- Reduced, Medium, Full, Raw y Custom. En Custom: máximo de triángulos independiente de textura 2K/4K/8K/16K (16K requiere macOS 15).
+- Sensibilidad, máscara y orden afectan la configuración real y su checkpoint.
+- Sensibilidad alta cuesta más tiempo; más fotos/píxeles/polígonos pueden aumentar memoria, tiempo y disco. Apple decide la salida efectiva y puede informar reducción de imágenes.
+
+PLANOS / ROOMPLAN
+- Refinado nativo de objetos (beautifyObjects) configurable. La revisión y los archivos exportados usan el mismo resultado elegido; CapturedRoomData original se conserva en JSON.
+- No se expone un control falso de triángulos/voxel o precisión de muros paramétricos. Este refinado de objetos no certifica medidas ni mejora la resolución del sensor.
+
+GAUSSIAN / IPHONE, MAC E HÍBRIDO
+- Atajos Vista previa (1000 pasos, factor 2), Equilibrado (3000, factor 1), Detalle (10000, factor 1); siguen editables, no son topes.
+- Continuar un checkpoint conserva su escala. Más pasos no garantiza mejor ajuste; Gaussian representa apariencia, no una malla métrica certificada.
+- No se añadieron pausas automáticas ni cambios de política térmica/memoria.
+
+Filtro de planos: garantías y alcance
+- Regiones conectadas, ajuste PCA en Double, área/extensión/soporte mínimos y rechazo de residuos estructurados, curvas, escalones y relieves coherentes.
+- Conserva conectividad, número de vértices/caras, bordes con una banda de transición y picos aislados. Rechaza inversiones/degeneraciones y desplazamientos superiores a la tolerancia.
+- La geometría por sí sola no distingue perfectamente ruido de relieve fino real: por eso es optativo. No afirma incertidumbre métrica ni usa una confianza de vértice que ARKit no proporciona.
+- Pausa/cancelación manual cooperativa durante copia, filtrado y texturizado; originales conservados y resultados guardados como otra captura.
+
+Evidencia
+A) Plano sintético conocido, MISMA cámara/material neutro/luz/resolución antes/después:
+   961 vértices y 1800 triángulos antes y después.
+   RMS respecto al plano ajustado: 0.461837 -> 0.238525 mm (-48.35%).
+   Desplazamiento máximo: 0.819218 mm; 729 vértices modificados; bordes retenidos.
+   Es una prueba del algoritmo, NO una captura real ni una medición de precisión del iPhone.
+B) Sala real existente: build/PhoneDelivery/9D475662-CF01-40E1-AD0A-F556E9004F8A/fuentes/malla-original.json
+   200790 vértices, 366954 triángulos. Tolerancia inicial 3 mm, sin relajar criterios.
+   0 regiones aceptadas, 0 desplazamiento; índices y dimensiones idénticos. 0.417 s en esta Mac.
+   SHA-256 fuente antes/después: d9acbbe202c5eec46f628446c7e82a754475a9ebf3ae5c66f3f7112df1ab7129.
+   Esta prueba NO demuestra limpieza de esa sala; preservarla evita aplanar zonas ambiguas.
+C) XCTest iPhone Simulator: 21 pruebas focalizadas aprobadas, 0 fallidas.
+   Incluye plano ruidoso/orientación/esquina/curva/relieve/escalón/capas/cancelación, configuración y compatibilidad de manifiestos, presets, copia derivada/exportación/integridad y materiales del visor.
+   Resultado: build/FormaV094GeometryQuality.xcresult.
+D) Compilaciones Release completas de iPhone y Mac: aprobadas. Firma de ambos paquetes verificada.
+   Forma Desktop 0.9.4 (20) instalada en /Applications sin abrir la cola existente.
+   iPhone: actualización instalada y lanzamiento confirmado tras la respuesta directa del usuario; contenedor Documents/Forma accesible con sus capturas existentes. No se borró/reinstaló desde cero.
+E) Artefactos reproducibles: build/Validation/GeometryQuality-20261018/planar-validation.json y PNG before/after. Tool: Tools/validate_planar_denoising.swift.
+
+Validación física pendiente
+- Nueva pared realmente lisa con y sin asistencia de planos, misma luz y recorrido, incluyendo borde/relieve de referencia. Separar vista neutra (geometría) de textura y comprobar escala contra una medida real.
+- RoomPlan refinado -> revisión -> exportación en iPhone físico y rendimiento/temperatura durante captura. El simulador no valida sensores.
+- Los experimentos anteriores de recuperación fotográfica sobre Raw siguen separados: no se presentan como una función ya entregada ni se reanudaron reconstrucciones largas en esta revisión.

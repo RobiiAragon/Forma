@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-20",
+  "version": "0.9.5",
+  "build": "22",
+  "fixtureBytes": 14935265,
+  "fixtureSourceSHA256": "75bf8055807602269a5e7e6c2ca44dba31715f2b7c5be460d0df86ad8509c7bc",
+  "previewMedianMilliseconds": {
+    "baseline": 155.45583333005197,
+    "candidate": 0.0587083341088146
+  },
+  "inventoryMedianMilliseconds": {
+    "baseline": 298.8341666641645,
+    "candidate": 152.9995000018971
+  },
+  "outputsMatch": true,
+  "sourceUnchanged": true,
+  "testsPassed": 15,
+  "testsFailed": 0,
+  "builds": [
+    "iOS generic unsigned",
+    "macOS arm64 unsigned",
+    "iOS Simulator"
+  ],
+  "physicalDeviceMeasured": false,
+  "installed": false
+}

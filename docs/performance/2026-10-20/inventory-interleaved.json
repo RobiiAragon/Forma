@@ -1,0 +1,285 @@
+{
+  "platform" : "macOS native; Desktop OBJ inventory only",
+  "runs" : [
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 0,
+      "seconds" : 0.32679529166489374,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 0,
+      "seconds" : 0.2343079583333747,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 1,
+      "seconds" : 0.15024170833567041,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 1,
+      "seconds" : 0.28004408333436004,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 2,
+      "seconds" : 0.27839920833139331,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 2,
+      "seconds" : 0.14102020833524875,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 3,
+      "seconds" : 0.1529995000018971,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 3,
+      "seconds" : 0.29883416666416451,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 4,
+      "seconds" : 0.36665187499966123,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 4,
+      "seconds" : 0.29445750000013504,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 5,
+      "seconds" : 1.2924655416682072,
+      "variant" : "candidate"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 5,
+      "seconds" : 0.51460899999801768,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 2
+      },
+      "run" : 6,
+      "seconds" : 0.25797854166739853,
+      "variant" : "baseline"
+    },
+    {
+      "inventory" : [
+        {
+          "height" : 1024,
+          "materials" : [
+            "photo"
+          ],
+          "path" : "photo.png",
+          "width" : 1024
+        }
+      ],
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 6,
+      "seconds" : 0.1448181666637538,
+      "variant" : "candidate"
+    }
+  ]
+}

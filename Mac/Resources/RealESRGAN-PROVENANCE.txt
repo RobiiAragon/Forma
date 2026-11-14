@@ -1,0 +1,8 @@
+Real-ESRGAN general_x4v3
+Original weights: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+Original project and BSD-3-Clause license: https://github.com/xinntao/Real-ESRGAN
+Core ML conversion: https://github.com/hanxiao/real-esrgan-coreml
+Converted package: release v1.0.0, RealESRGAN_general_522_fp16.zip
+Archive SHA256: 41368af9dcbcc300c0fe0442202acbf98d30dc07c28d49bf656883f7fef3656a
+Forma downloads the weights once to local application support. Inference runs in Core ML, without Comfy, Python, accounts, cloud uploads or per-scan fees.
+Appearance restoration is inferred and is not a new geometric measurement. The source capture is preserved.

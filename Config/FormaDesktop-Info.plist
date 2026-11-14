@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>NSLocalNetworkUsageDescription</key><string>Forma Desktop recibe de tu iPhone fotografías, profundidad y mallas por tu red local para procesarlas en este Mac.</string>
+<key>NSBonjourServices</key><array><string>_forma-rgbd._tcp</string></array>
+</dict></plist>

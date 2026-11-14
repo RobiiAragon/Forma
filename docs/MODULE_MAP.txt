@@ -1,0 +1,32 @@
+FORMA — mapa breve de módulos y extensión
+
+Entrada y composición
+- Forma/FormaApp.swift: crea ScanStore e inyecta dependencias. Test hosts usan una biblioteca temporal aislada.
+- Mac/FormaDesktopApp.swift y DesktopStore: composición Mac, cola local, controllers retenidos y coordinación de motores. El worker Gaussian mantiene su proceso independiente.
+
+Presentación y estado (MVVM / controllers equivalentes)
+- Forma/Presentation/Components: branding y controles SwiftUI reutilizables; no procesan mallas ni escriben modelos. LiDARQualityControls se compila en ambos targets.
+- Forma/Features: pantallas y adaptadores de vistas ARKit/SceneKit/SwiftUI. ScanRefinementViewModel posee ajustes, progreso, error, resultado y tarea del reprocesado; ScanDetailView solo presenta e invoca acciones.
+- Mac/DesktopGeometryRefinement, DesktopPhotogrammetry, DesktopLocalAI y DesktopGaussian: ObservableObject de presentación/orquestación. Las vistas observan estado y envían acciones; sus servicios/motores hacen el trabajo pesado.
+- Algunas vistas de captura aún comparten archivo con el controller y adaptador nativo, pero son tipos separados. No se fragmentó todo el proyecto ni se sustituyeron motores para imponer una nomenclatura.
+
+Dominio, servicios y persistencia
+- Forma/Core/ScanModels, RGBDDataset, LiDARQualitySettings, GaussianTrainingPreset: datos y opciones persistibles.
+- SavedScanRefinement, LiDARProcessingPipeline, MeshContinuity, MeshPlanarDenoiser, LiDARTextureBaker, TextureAtlasBuilder: procesamiento local y operaciones sobre copias.
+- ScanStore, CooperativeFileIO, PendingScanRecovery, MeshExporter, StoredUSDZArchive, COLMAPDatasetExporter: persistencia, publicación íntegra y exportación.
+- HybridTransfer/HybridResultImport: intercambio local iPhone–Mac, sin backend en nube.
+- GaussianTrainerService y Vendor/Msplat: motor Metal local, checkpoint e intención de ejecución. LocalAITextureEnhancer/Core ML: restauración local con el modelo existente.
+- Shared/ProcessingActivityAttributes y FormaLiveActivity: contrato y presentación del progreso en Dynamic Island, separados del motor.
+
+Cómo extender un flujo
+1. Añadir opciones/datos en Core, manteniendo decodificación compatible cuando se persistan.
+2. Implementar procesamiento en un servicio; conservar fuentes y publicar una copia mediante ScanStore. Reutilizar ProcessingControl y checkpoints para pausa/cancelación manual.
+3. Añadir estado observable y acciones en el view model/controller; inyectar los servicios existentes desde la composición. Una vista no debe adquirir archivos o reconstruir geometría en su body.
+4. Crear controles de presentación que enlacen a ese estado. Mantener el branding, etiquetas accesibles, texto escalable y estados de error/progreso explícitos.
+5. Nuevos archivos dentro de Forma se detectan en el target iOS. Para compartir con Mac, actualizar scripts/generate_project.py (shared_names/ruta de fuente); las vistas compartidas van en Presentation, los algoritmos en Core. Generar y compilar ambos targets.
+6. Verificar el comportamiento cambiado con fixtures locales y biblioteca aislada. No sustituir capturas fuente, descargar modelos nuevos ni conectar servicios externos por defecto.
+
+Distribución prevista
+Pago único al descargar de App Store; acceso completo. Sin StoreKit/IAP, suscripciones, anuncios o desbloqueos locales. El usuario configurará precio y publicación más adelante.
+
+Rendimiento de previews (0.9.5): TexturePreviewProxy reutiliza metadatos validados de OBJ/MTL/mapas difusos y presupuesto efectivo; no conserva imágenes o texto de malla. Al extender sus entradas, incorporar toda dependencia/opción que cambie la salida e invalidar sustituciones de archivo. TextureAssetInventory.loadIfPresent permite al visor Mac validar materiales en una pasada; load conserva su contrato estricto. Ver PERFORMANCE.md.

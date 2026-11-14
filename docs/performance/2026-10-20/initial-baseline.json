@@ -1,0 +1,87 @@
+{
+  "budgetBytes" : 16384,
+  "peakRSSBytesWholeProcess" : 106299392,
+  "platform" : "macOS native; metadata\/proxy preparation only, not rendering or reconstruction",
+  "runs" : [
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 0,
+      "seconds" : 0.18600583333318355,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 1,
+      "seconds" : 0.15311499999916123,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 2,
+      "seconds" : 0.14679191666618863,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 3,
+      "seconds" : 0.15326300000015181,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 4,
+      "seconds" : 0.16712862500025949,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 5,
+      "seconds" : 0.15098929166560993,
+      "variant" : "baseline"
+    },
+    {
+      "outputSHA256" : "00eee50fdf01b83fd81498f6222f64f011f592f928b94e49e244a7072c45da4c",
+      "resourceOperations" : {
+        "imageMetadata" : 1,
+        "materialText" : 1,
+        "modelText" : 1
+      },
+      "run" : 6,
+      "seconds" : 0.15542208333317831,
+      "variant" : "baseline"
+    }
+  ],
+  "sourceBytes" : 14935265,
+  "sourceSHA256" : "75bf8055807602269a5e7e6c2ca44dba31715f2b7c5be460d0df86ad8509c7bc",
+  "sourceUnchanged" : true
+}
