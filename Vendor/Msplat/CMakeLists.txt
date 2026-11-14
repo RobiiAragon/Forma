@@ -141,7 +141,7 @@ add_dependencies(msplat_core metallib)
 # --- CLI binary ---
 
 # The CLI is a desktop tool; an iOS build only wants the static library.
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cli/msplat.cpp")
     add_executable(msplat cli/msplat.cpp)
     target_link_libraries(msplat PRIVATE
         msplat_core
